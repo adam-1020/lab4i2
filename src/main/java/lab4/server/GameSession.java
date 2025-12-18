@@ -15,10 +15,10 @@ import lab4.common.Move;
  * - Observer (prymitywny): trzymamy listę ClientHandler i broadcastujemy
  * - DTO (data transfer object): Board i Move są przesyłane/serializowane przez JsonUtil
  */
-public class GameSession 
+public class GameSession
 {
-
-    private static GameSession instance = null;
+    // konstruktor tego jest prywatny, uzywajac getinstance wstawiamy instancje w pole static, a:
+    private static GameSession instance = null; //static nalezy do klasy, ale nie do instancji.
 
     // utwórz lub pobierz instancję (wywołujemy z ServerMain przy starcie)
     public static synchronized GameSession getInstance(int boardSize)
@@ -40,6 +40,10 @@ public class GameSession
     private boolean started = false;
     private boolean gameOver = false;
     private int consecutivePasses = 0; // bo po 2x PASS konczymy gre
+    private boolean stoppedForAgreement = false; // nowe pole, true po PASS+PASS
+    private boolean ONEvotedForFinish = false; // zlicza do dwoch, wtedy zatrzymuje gre
+    private boolean TWOvotedForFinish = false;
+    final int[] wyniki = {0,0}; // 0 indeks -> zbite 1 gracza; 1 indeks -> zbite 2 gracza (do uzycia pozniej w gui)
 
     // previousBoard used to detect Ko (position before last move)
     private int[][] previousBoard = null;
@@ -47,6 +51,10 @@ public class GameSession
     private GameSession(int boardSize)
     {
         this.board = new Board(boardSize);
+    }
+
+    public synchronized boolean isRunning(){ // do petli servermain, zeby wiedziec jak dlugo podtrzymywac
+        return !gameOver;
     }
 
     public synchronized void register(ClientHandler h)
@@ -62,7 +70,7 @@ public class GameSession
     public synchronized void startGame()
     {
         if (started) return;
-        if (observers.size() != 2) 
+        if (observers.size() != 2)
         {
             System.out.println("Need exactly 2 players to start game");
             return;
@@ -101,6 +109,7 @@ public class GameSession
     // APPLY MOVE
     public synchronized void applyMove(Move m, ClientHandler ch)
     {
+        if (stoppedForAgreement) {ch.sendLine("ERROR Game stopped. Use RESUME to continue game or FINISH if you have agreed.");return;}
         if (gameOver) { ch.sendLine("ERROR Game already finished"); return; }
         if (m.player != ch.getPlayerId()) { ch.sendLine("ERROR Player id mismatch"); return; }
         if (m.player != currentPlayer) { ch.sendLine("ERROR Not your turn"); return; }
@@ -130,7 +139,12 @@ public class GameSession
 
         broadcastBoard();
         if (result > 0) broadcastInfo("Player " + m.player + " captured " + result + " stone(s).");
-
+        wyniki[m.player-1]+=result; // update wyników i rozesłanie ich
+        for (ClientHandler h : observers)
+        {
+            h.sendLine("WYNIKI1 " + wyniki[0]);
+            h.sendLine("WYNIKI2 " + wyniki[1]);
+        }
         // change turn
         currentPlayer = (currentPlayer == 1 ? 2 : 1);
         notifyTurn();
@@ -139,6 +153,7 @@ public class GameSession
     // PASS
     public synchronized void playerPassed(ClientHandler ch)
     {
+        if (stoppedForAgreement) {ch.sendLine("ERROR Game stopped. Use RESUME to continue game or FINISH if you have agreed.");return;}
         if (gameOver) { ch.sendLine("ERROR Game already finished"); return; }
         if (ch.getPlayerId() != currentPlayer) { ch.sendLine("ERROR Not your turn"); return; }
 
@@ -146,19 +161,56 @@ public class GameSession
 
         // For Ko: treat pass as a move that sets previousBoard to current position
         previousBoard = board.getGridCopy();
-
         consecutivePasses++;
-        if (consecutivePasses >= 2)
-        {
-            gameOver = true;
-            broadcastInfo("Both players passed. Game over.");
-            broadcastBoard();
-            for (ClientHandler h : observers) h.sendLine("GAME_OVER Both players passed");
-            return;
+
+        if (consecutivePasses >= 2) {
+            stoppedForAgreement = true;
+            //powiadamiamy klientow
+            for (ClientHandler h : observers)
+            {
+                h.sendLine("AGREEMENT_ON");
+            }
+            broadcastInfo("Both players passed. Game stopped for agreement.");
+            broadcastInfo("Players may now agree on dead stones and type FINISH or request RESUME.");
+            return; //nie musimy sie przejmowac ustawieniem currentPlayer
         }
 
         currentPlayer = (currentPlayer == 1 ? 2 : 1);
         notifyTurn();
+    }
+
+    // RESUME
+    public synchronized void playerResume(ClientHandler ch)
+    {
+        if (!stoppedForAgreement) {
+            ch.sendLine("ERROR Game is not stopped");
+            return;
+        }
+        //powiadamiamy klientow
+        stoppedForAgreement = false;
+        for (ClientHandler h : observers)
+        {
+            h.sendLine("AGREEMENT_OFF");
+        }
+        consecutivePasses = 0;
+        ONEvotedForFinish = false;
+        TWOvotedForFinish = false;
+        // przeciwnik gracza żądającego wznowienia zaczyna
+        currentPlayer = (ch.getPlayerId() == 1 ? 2 : 1);
+        broadcastBoard();
+        broadcastInfo("Game resumed. Player " + currentPlayer + " to move.");
+        notifyTurn();
+    }
+
+    // FINISH
+    public synchronized void playerVotedFinish(ClientHandler ch)
+    {
+    if (ch.getPlayerId() == 1){ONEvotedForFinish = true; broadcastInfo("Player 1 voted FINISH");}
+    else if (ch.getPlayerId() == 2){TWOvotedForFinish = true; broadcastInfo("Player 2 voted FINISH");}
+    if(ONEvotedForFinish && TWOvotedForFinish) {
+        gameOver = true;
+        for (ClientHandler h : observers) h.sendLine("GAME_OVER You both agreed. Thanks for game:)"); //konczy gre
+    }
     }
 
     // RESIGN

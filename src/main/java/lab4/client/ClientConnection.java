@@ -46,7 +46,18 @@ public class ClientConnection {
                         handler.onYourTurn();
                     } else if (line.equals("OPPONENT_TURN")) {
                         handler.onOpponentTurn();
-                    } else if (line.startsWith("INFO ")) {
+                    } else if (line.equals("AGREEMENT_ON")) {
+                        handler.onstoppedForAgreement();
+                    } else if (line.equals("AGREEMENT_OFF")) {
+                        handler.offstoppedForAgreement();
+                    } else if (line.startsWith("WYNIKI1 ")) {
+                        int value = Integer.parseInt(line.substring(8));
+                        handler.wynikiPierwszego(value);
+                    } else if (line.startsWith("WYNIKI2 ")) {
+                        int value = Integer.parseInt(line.substring(8));
+                        handler.wynikiDrugiego(value);
+                    }
+                    else if (line.startsWith("INFO ")) {
                         handler.onInfo(line.substring(5));
                     } else if (line.startsWith("ERROR ")) {
                         handler.onError(line.substring(6));
@@ -76,5 +87,9 @@ public class ClientConnection {
         void onGameOver(String msg);
         void onDisconnect();
         void onUnknown(String line);
+        void onstoppedForAgreement();
+        void offstoppedForAgreement();
+        void wynikiPierwszego(int a);
+        void wynikiDrugiego(int a);
     }
 }

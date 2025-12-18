@@ -12,7 +12,7 @@ public class ServerMain
     public static void main(String[] args)
     {
         final int port = 55555;
-        final int boardSize = 19;
+        final int boardSize = 19; //tu bedzie mozna zmienic rozmiar planszy
 
         System.out.println("Server starting on port " + port + " (board " + boardSize + "x" + boardSize + ")");
 
@@ -39,8 +39,8 @@ public class ServerMain
             System.out.println("Two players connected. Starting game.");
             GameSession.getInstance().startGame();
 
-            // keep server alive
-            while (true) Thread.sleep(1000);
+            // keep server alive (ale tylko dopoki nie jest gameOver)
+            while (GameSession.getInstance().isRunning()) Thread.sleep(1000);
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();

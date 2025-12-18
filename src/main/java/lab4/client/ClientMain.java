@@ -31,6 +31,8 @@ public class ClientMain
 
         final boolean[] myTurn = {false};
         final int[] myId = {-1}; //tablica jednoelementowa; finalna; ale jej elementy mozna zmieniac
+        final boolean[] stoppedForAgreement = {false};  // nowo dodane (jak true to czekamy na finish/resume)
+        final int[] wyniki = {0,0}; // 0 indeks -> zbite 1 gracza; 1 indeks -> zbite 2 gracza (do uzycia pozniej w gui)
 
         conn.startListening(new ClientConnection.MessageHandler() {
             @Override
@@ -92,6 +94,26 @@ public class ClientMain
             {
                 System.out.println("[SERVER] " + line);
             }
+
+            @Override
+            public void onstoppedForAgreement() {
+                stoppedForAgreement[0] = true;
+            }
+
+            @Override
+            public void offstoppedForAgreement() {
+                stoppedForAgreement[0] = false;
+            }
+
+            @Override
+            public void wynikiPierwszego(int a) {
+                wyniki[0]=a;
+            }
+
+            @Override
+            public void wynikiDrugiego(int a) {
+                wyniki[1]=a;
+            }
         });
 
         System.out.println("Connected. Wait until game starts...");
@@ -125,6 +147,27 @@ public class ClientMain
                 continue;
             }
 
+            if (up.equals("RESUME"))
+            {
+                conn.sendLine("RESUME");
+                continue;
+            }
+
+            if (up.equals("SCORE"))
+            {
+                System.out.println("Player1: " + wyniki[0] + ", Plater2: " + wyniki[1]);
+                continue;
+            }
+
+            if (stoppedForAgreement[0]){ //nie jest w 100% konieczne, bo i tak serwer by zwrocil błąd na requesty w takiej sytuacji, ale ten bool sie przyda pozniej do gui
+                if (up.equals("FINISH")) {
+                    conn.sendLine("FINISH");
+                    continue;
+                }
+                System.out.println("Game stopped. Use FINISH or RESUME to continue!");
+                continue;
+            }
+
             // otherwise try to parse move row col
             if (!myTurn[0])
             {
@@ -150,5 +193,4 @@ public class ClientMain
             }
         }
     }
-
 }

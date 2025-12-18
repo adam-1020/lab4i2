@@ -50,7 +50,7 @@ java lab4.client.ClientMain
 
 Opis:
 
-plansza 19×19,
+plansza 19×19 (do ew zmiany w ServerMain),
 
 Singleton: GameSession (jedna gra),
 
@@ -58,11 +58,25 @@ DTO (Data Transfer Object): Move, Board (wysyłane w JSON),
 
 Observer (prymitywny): GameSession powiadamia ClientHandler o zmianach planszy,
 
+INSTRUKCJA:
+
 PASS (pominięcie ruchu),
+
+SCORE (wyswietla punkty za zbite kamienie dla obu graczy),
 
 RESIGN (poddanie się),
 
-zdejmowanie (capturing) grup przeciwnika,
+EXIT/QUIT (rozłączenie się),
+
+po 2x PASS:
+
+RESUME (wznawia gre z ruchem dla przeciwnika)
+
+FINISH (jak obaj gracze się zgodzą to koniec gry)
+
+FUNKCJONALNOŚCI:
+
+zdejmowanie (capturing) grup przeciwnika (grupy mają wspólne oddechy),
 
 blokada ruchu samobójczego (suicide),
 
@@ -76,7 +90,7 @@ Serwer akceptuje dokładnie 2 połączenia i potem uruchamia grę.
 
 Capture: zadziała dla otoczonych grup (rekursywnie / stack).
 
-Po 2x PASS gra się kończy (GAME_OVER Both players passed). Nie ma zaimplementowanego automatycznego liczenia punktów, dodamy później.
+Po 2x PASS stoppedForAgreement=true. Wtedy albo gracze się zgadzają i gra się kończy, albo nie - wtedy kontynuują.
 
 Sposób działania komunikacji: (!!!)
 
@@ -87,3 +101,7 @@ ClientConnection wysyla np. obiekt Move zamieniony na JSON w JsonUtil; odbiera C
 Serwer → klient
 
 wysyła ClientHandler (lub GameSession za jego pomocą); odbiera ClientConnection
+
+DODATKOWE RZECZY W I2:
+
+boolean stoppedForAgreement i wyniki przechowywane na biezaco w ClientMain. Do wykorzystania później w GUI.

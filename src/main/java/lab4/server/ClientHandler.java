@@ -78,13 +78,21 @@ public class ClientHandler implements Runnable {
                         GameSession.getInstance().playerResigned(this);
                         break;
 
+                    case "RESUME":
+                        GameSession.getInstance().playerResume(this);
+                        break;
+
+                    case "FINISH":
+                        GameSession.getInstance().playerVotedFinish(this);
+                        break;
+
                     default:
                         sendLine("ERROR Unknown command: [" + cmd + "]");
                 }
             }
         } catch (IOException e) {
             System.err.println("Client " + playerId + " disconnected: " + e.getMessage());
-        } finally {
+        } finally { //jak klient się zamknie to jego handler po stronie serwera to przechwyci, jak klient uzyje quit/exit to wywola sie resign (bez info o bledzie), a jak zamknie okno po prostu to clientdisconnected
             try { socket.close(); } catch (IOException ignored) {}
             try { GameSession.getInstance().clientDisconnected(this); } catch (Exception ignored) {}
         }
