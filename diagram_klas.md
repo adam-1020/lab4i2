@@ -16,17 +16,15 @@ classDiagram
     }
 
     class Board {
-        - int[][] grid
-        - int size
+        + int size
+        + int[][] grid
 
         + Board(int size)
+        + synchronized boolean isEmpty(int r, int c)
+        + synchronized int applyMoveAndCapture(int r, int c, int player)
         + synchronized int[][] getGridCopy()
         + synchronized void setGridFromCopy(int[][] src)
         + static boolean gridsEqual(int[][] a, int[][] b)
-
-        + synchronized int applyMoveAndCapture(int r, int c, int player)
-        - synchronized int removeGroup(int r, int c, int color)
-        - private boolean hasLiberties(int[][] boardCopy, int r, int c)
         + synchronized String toString()
     }
 
@@ -37,7 +35,6 @@ classDiagram
         + static Board jsonToBoard(String json)
     }
 
-
 %% ======================
 %% SERVER
 %% ======================
@@ -47,20 +44,19 @@ classDiagram
         - Board board
         - List~ClientHandler~ observers
         - int currentPlayer
-        - boolean started
         - boolean gameOver
-        - int consecutivePasses
+        - boolean stoppedForAgreement
         - int[][] previousBoard
 
         + static synchronized GameSession getInstance(int boardSize)
         + static synchronized GameSession getInstance()
         + synchronized void register(ClientHandler h)
         + synchronized void startGame()
-        - synchronized void notifyTurn()
         + synchronized void broadcastBoard()
-        - synchronized void broadcastInfo(String msg)
         + synchronized void applyMove(Move m, ClientHandler ch)
         + synchronized void playerPassed(ClientHandler ch)
+        + synchronized void playerResume(ClientHandler ch)
+        + synchronized void playerVotedFinish(ClientHandler ch)
         + synchronized void playerResigned(ClientHandler ch)
         + synchronized void clientDisconnected(ClientHandler ch)
     }
@@ -81,9 +77,8 @@ classDiagram
         + static void main(String[] args)
     }
 
-
 %% ======================
-%% CLIENT
+%% CLIENT (SWING)
 %% ======================
     class ClientConnection {
         - Socket socket
@@ -97,11 +92,26 @@ classDiagram
         + void close()
     }
 
-    class ClientMain {
+    class SwingClientMain {
+        - ClientConnection conn
+        - int myId
+        - boolean myTurn
+        - boolean stoppedForAgreement
+        - int[] wyniki
+        - Board board
+
         + static void main(String[] args)
+        - void start()
+        - void buildGui()
+        - void registerHandlers()
     }
 
-%% MessageHandler is an internal interface of ClientConnection
+    class BoardPanel {
+        <<inner class>>
+        + paintComponent(Graphics g)
+    }
+
+%% MessageHandler (rzeczywista wersja)
     class MessageHandler {
         <<interface>>
         + void onStart(int myId)
@@ -113,37 +123,38 @@ classDiagram
         + void onGameOver(String msg)
         + void onDisconnect()
         + void onUnknown(String line)
+        + void onstoppedForAgreement()
+        + void offstoppedForAgreement()
+        + void wynikiPierwszego(int a)
+        + void wynikiDrugiego(int a)
     }
 
 %% ======================
 %% RELATIONS
 %% ======================
 
-%% Server flow: ServerMain creates handlers and registers them in GameSession
+%% Server side
     ServerMain --> ClientHandler : creates
-    ServerMain --> GameSession : getInstance(boardSize) / register(handler)
-
-%% GameSession manages handlers (Observer)
-    GameSession "1" --> "0..2" ClientHandler : observers (broadcastBoard / notifyTurn)
-
-%% GameSession uses Board
-    GameSession --> Board : has
-
-%% ClientHandler uses GameSession and JsonUtil
-    ClientHandler --> GameSession : applyMove / playerPassed / playerResigned / clientDisconnected
-    ClientHandler --> JsonUtil : jsonToMove / boardToJson
-    
-%% Server–Client communication
-    ClientHandler <--> ClientConnection : network communication
-
-%% Client side relations
-    ClientMain --> ClientConnection : uses
-    ClientConnection --> MessageHandler : callback
-    ClientConnection --> JsonUtil : jsonToBoard / moveToJson
-    ClientMain --> JsonUtil : moveToJson
-%% Move dependencies
-    ClientMain ..> Move : uses
-    JsonUtil ..> Move : uses
-    ClientHandler ..> Move : uses
+    ServerMain --> GameSession : initializes
+    GameSession "1" --> "0..2" ClientHandler : observers
+    GameSession --> Board : manages
     GameSession ..> Move : uses
+    ClientHandler --> GameSession : commands
+    ClientHandler --> JsonUtil : jsonToMove / boardToJson
+    ClientHandler ..> Move : uses
+
+%% Client <-> Server
+    ClientHandler <--> ClientConnection : socket I/O
+
+%% Client side (Swing)
+    SwingClientMain --> ClientConnection : uses
+    SwingClientMain --> Board : holds
+    SwingClientMain --> BoardPanel : creates
+    SwingClientMain ..> Move : creates
+    SwingClientMain --> JsonUtil : moveToJson
+    ClientConnection --> MessageHandler : callbacks
+    ClientConnection --> JsonUtil : jsonToBoard / moveToJson
+    
+%% other
+    JsonUtil ..> Move : uses
 ```

@@ -4,6 +4,8 @@ src/
 
 │    ├─ ClientMain.java
 
+│    ├─ SwingClientMain.java
+
 │    └─ ClientConnection.java
 
 ├─ server/
@@ -42,11 +44,11 @@ nastęnie odpalamy serwer:
 
 java lab4.server.ServerMain
 
-i odpalamy dwóch klientów(graczy):
+i odpalamy dwóch klientów(graczy) używając SwingClientMain lub ClientMain:
 
 java lab4.client.ClientMain
 
-java lab4.client.ClientMain
+java lab4.client.SwingClientMain
 
 Opis:
 
@@ -104,4 +106,4 @@ wysyła ClientHandler (lub GameSession za jego pomocą); odbiera ClientConnectio
 
 DODATKOWE RZECZY W I2:
 
-boolean stoppedForAgreement i wyniki przechowywane na biezaco w ClientMain. Do wykorzystania później w GUI.
+boolean stoppedForAgreement i wyniki przechowywane na biezaco w ClientMain/SwingClientMain. Do wykorzystania później w GUI.
