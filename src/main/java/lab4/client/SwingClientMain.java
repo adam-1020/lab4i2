@@ -1,17 +1,36 @@
 package lab4.client;
 
-import lab4.common.Board;
-import lab4.common.JsonUtil;
-import lab4.common.Move;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.text.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.time.LocalTime;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
+
+import lab4.common.Board;
+import lab4.common.JsonUtil;
+import lab4.common.Move;
 
 /**
  * Swing GUI client (działa jak ClientMain konsolowy, można ich używać zamiennie)
@@ -165,60 +184,126 @@ public class SwingClientMain {
 
     // do wpisywania własnych logów z użyciem wcześniej zadeklarowanych stylów (kolorów)
     private void log(String type, String msg) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                String time = LocalTime.now().withNano(0).toString();
+                consoleDoc.insertString(
+                        consoleDoc.getLength(),
+                        "[" + time + "] " + msg + "\n",
+                        console.getStyle(type)
+                );
+                console.setCaretPosition(consoleDoc.getLength()); // Ustawiasz kursor na sam dół tekstu; przewija scrollPane na dół
+            } catch (BadLocationException ignored) {}
+        });
     }
 
-    // handlers (do zaimplementowania)
+    // handlers
     private void registerHandlers() {
         conn.startListening(new ClientConnection.MessageHandler() {
             @Override public void onStart(int id) {
+                myId = id;
+                String color = (id == 1 ? "Black" : "White");
+                playerLabel.setText("You are Player " + id + " (" + color + ")");
+                log("SYSTEM", "You are Player " + id + " (" + color + ")");
             }
 
             @Override public void onBoard(Board b) {
+                board = b;
+                boardPanel.repaint(); // wywołuje PaintComponent
             }
 
             @Override public void onYourTurn() {
+                myTurn = true;
+                if (!stoppedForAgreement) {
+                    turnLabel.setText("Your turn");
+                    log("SYSTEM", "Your turn");
+                }
+                updateButtons();
             }
 
             @Override public void onOpponentTurn() {
+                myTurn = false;
+                if (!stoppedForAgreement) {
+                    turnLabel.setText("Opponent's turn");
+                    log("SYSTEM", "Opponent's turn");
+                }
+                updateButtons();
             }
 
             @Override public void onInfo(String msg) {
+                log("INFO", msg);
             }
 
             @Override public void onError(String msg) {
+                log("ERROR", msg);
             }
 
             @Override public void onGameOver(String msg) {
+                JOptionPane.showMessageDialog(frame, msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                System.exit(0);
             }
 
             @Override public void onDisconnect() {
+                JOptionPane.showMessageDialog(frame, "Disconnected");
+                System.exit(0);
             }
 
             @Override public void onUnknown(String line) {
+                log("SYSTEM", line);
             }
 
             @Override public void onstoppedForAgreement() {
+                stoppedForAgreement = true;
+                turnLabel.setText(" ");
+                agreementLabel.setText("STOPPED FOR AGREEMENT");
+                log("SYSTEM", "Game stopped for agreement");
+                updateButtons();
             }
 
             @Override public void offstoppedForAgreement() {
+                stoppedForAgreement = false;
+                agreementLabel.setText(" ");
+                log("SYSTEM", "Game resumed");
+                updateButtons();
             }
 
             @Override public void wynikiPierwszego(int a) {
+                wyniki[0] = a;
+                scoreLabel.setText("P1: " + wyniki[0] + "   P2: " + wyniki[1]);
             }
 
             @Override public void wynikiDrugiego(int a) {
+                wyniki[1] = a;
+                scoreLabel.setText("P1: " + wyniki[0] + "   P2: " + wyniki[1]);
             }
         });
     }
 
-    // BoardPanel !!! (do zaimplementowania)
+    // BoardPanel !!!
     private class BoardPanel extends JPanel {
         private static final int M = 40; // margines planszy od krawędzi
 
         BoardPanel() {
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) {
-                    //tutaj zrób obsługę kliknięcia w przecięcie co wysyła move
+                    if (board == null) return;
+
+                    if (stoppedForAgreement) {
+                        log("INFO", "Game is stopped for agreement");
+                        return;
+                    }
+
+                    if (!myTurn) {
+                        log("INFO", "Not your turn");
+                        return;
+                    }
+
+                    int size = board.size; //rozmiar boku planszy np. 19
+                    int cell = Math.min(getWidth(), getHeight()) / (size + 1); // (getWidth() zwraca szerokość komponentu w px (boardPanel), mniejszy wymiar dzielimy na size+1. UWAGA dla size=19 mamy 18 komórek w boku!!! więc to działa względnie dobrze
+                    int c = Math.round((e.getX() - M) / (float) cell); // pozycja klikniecia na rozmiar komorki z przesunieciem o margines
+                    int r = Math.round((e.getY() - M) / (float) cell);
+                    if (r < 0 || c < 0 || r >= size || c >= size) return; // poza planszą klik
+                    conn.sendMoveJson(JsonUtil.moveToJson(new Move(r, c, myId))); // wysylamy move kliknięciem
                 }
             });
         }
@@ -227,7 +312,34 @@ public class SwingClientMain {
             super.paintComponent(g);
             if (board == null) return;
 
-            //tutaj zrób żeby rysowalo tło na planszy, siatkę przecięć i podwójną petlą kamienie z board
+            Graphics2D g2 = (Graphics2D) g; // Graphics2D pozwala na bardziej zaawansowane rysowanie niż zwykły Graphics
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); // Antyaliasing sprawia, że linie i okręgi są wygładzone
+
+            int size = board.size;
+            int cell = Math.min(getWidth(), getHeight()) / (size + 1); // rozmiar pojedynczej komorki w px
+
+            g2.setColor(new Color(220, 180, 120)); // kolor tła
+            g2.fillRect(0, 0, getWidth(), getHeight()); // wypełniamy nim cały BoardPanel
+
+            //rysowanie planszy ( czarnych linii)
+            g2.setColor(Color.BLACK);
+            for (int i = 0; i < size; i++) {
+                int p = M + i * cell; // margines + przesuniecie
+                g2.drawLine(M, p, M + cell * (size - 1), p); // poziome; od (M, p) do (M + cell*(size-1), p)
+                g2.drawLine(p, M, p, M + cell * (size - 1)); // pionowe; od (p, M) do (p, M + cell*(size-1))
+            }
+            //rysowanie kamieni
+            int rStone = cell / 2 - 2; // promień kamienia
+            for (int r = 0; r < size; r++) for (int c = 0; c < size; c++) {
+                int v = board.grid[r][c];
+                if (v == 0) continue; // puste pole
+                int x = M + c * cell; // wspolrzedne do wstawienia kamienia
+                int y = M + r * cell;
+                g2.setColor(v == 1 ? Color.BLACK : Color.WHITE); // kolor zalezny czy 1 czy nie
+                g2.fillOval(x - rStone, y - rStone, rStone * 2, rStone * 2); // fillOval rysuje wypełniony kamień
+                g2.setColor(Color.BLACK);
+                g2.drawOval(x - rStone, y - rStone, rStone * 2, rStone * 2); // drawOval rysuje obwódkę
+            }
         }
     }
 }
