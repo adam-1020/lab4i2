@@ -15,6 +15,14 @@ import lab4.common.Move;
  */
 public class ClientMain
 {
+    /**
+     * Entry point of the console client application.
+     * Establishes a connection to the server, sets up message handling,
+     * and processes user input from the console.
+     *
+     * @param args command-line arguments (not used)
+     * @throws IOException if an I/O error occurs while reading input
+     */
      public static void main(String[] args) throws IOException
      {
         String host = "localhost";
@@ -29,9 +37,17 @@ public class ClientMain
             return;
         }
 
+        /** Indicates whether it is currently this player's turn */
         final boolean[] myTurn = {false};
+        /** Stores the identifier of this player */
         final int[] myId = {-1}; //tablica jednoelementowa; finalna; ale jej elementy mozna zmieniac
+        /** Indicates whether the game is paused due to an agreement */
         final boolean[] stoppedForAgreement = {false};  // nowo dodane (jak true to czekamy na finish/resume)
+        /**
+         * Stores captured stones counts:
+         * index 0 – first player,
+         * index 1 – second player
+         */
         final int[] wyniki = {0,0}; // 0 indeks -> zbite 1 gracza; 1 indeks -> zbite 2 gracza (do uzycia pozniej w gui)
 
         conn.startListening(new ClientConnection.MessageHandler() {

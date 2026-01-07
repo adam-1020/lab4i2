@@ -8,29 +8,64 @@ import java.util.Stack;
  * Uwaga: GameSession zarządza turą, KO, passami i obserwatorami.
  */
 public class Board {
+    /** Board size (number of rows and columns) */
     public final int size;
+     /**
+     * Board grid representation:
+     * 0 - empty field,
+     * 1 - player 1 (X),
+     * 2 - player 2 (O)
+     */
     public int[][] grid; // 0 empty, 1 player1 (X), 2 player2 (O) !!!
 
+    /**
+     * Creates an empty board of the given size.
+     *
+     * @param size board dimension
+     */
     public Board(int size) {
         this.size = size;
         this.grid = new int[size][size];
     }
 
+    /**
+     * Checks whether given coordinates are within board bounds.
+     *
+     * @param r row index
+     * @param c column index
+     * @return true if coordinates are inside the board
+     */
     private boolean inBounds(int r, int c) {
         return r >= 0 && c >= 0 && r < size && c < size;
     }
 
+    /**
+     * Checks whether a given board position is empty.
+     *
+     * @param r row index
+     * @param c column index
+     * @return true if the position is empty and within bounds
+     */
     public synchronized boolean isEmpty(int r, int c) {
         return inBounds(r, c) && grid[r][c] == 0;
     }
 
     /**
-     * Apply move with captures. Returns:
-     *  -1 => occupied / out of bounds
-     *  -2 => suicide (illegal)
-     *  >=0 => number of captured enemy stones
+     * Applies a move to the board and performs captures if applicable.
+     * <p>
+     * Return values:
+     * <ul>
+     *   <li>-1 – field occupied or out of bounds</li>
+     *   <li>-2 – suicide move (illegal)</li>
+     *   <li>&gt;= 0 – number of captured enemy stones</li>
+     * </ul>
+     * <p>
+     * The board state is modified and the method is synchronized.
      *
-     * The board is modified (synchronized).
+     * @param r row index
+     * @param c column index
+     * @param player player identifier (1 or 2)
+     * @return result code or number of captured stones
      */
     public synchronized int applyMoveAndCapture(int r, int c, int player) {
         if (!inBounds(r, c)) return -1;
@@ -68,6 +103,14 @@ public class Board {
     }
 
     // removes group of 'color' starting at r,c and returns how many stones removed
+    /**
+     * Removes a connected group of stones of the given color.
+     *
+     * @param r starting row
+     * @param c starting column
+     * @param color stone color to remove
+     * @return number of removed stones
+     */
     private int removeGroup(int r, int c, int color) {
         if (!inBounds(r,c)) return 0;
         if (grid[r][c] != color) return 0;
@@ -105,6 +148,17 @@ public class Board {
 
     // check if group at r,c has liberties on the given board array
     // does not modify boardCopy
+    /**
+     * Checks whether a connected group at the given position
+     * has at least one liberty.
+     * <p>
+     * This method does not modify the board.
+     *
+     * @param boardCopy board state to analyze
+     * @param r row index
+     * @param c column index
+     * @return true if the group has at least one liberty
+     */
     private boolean hasLiberties(int[][] boardCopy, int r, int c) {
         if (!inBounds(r,c)) return false;
         int color = boardCopy[r][c];
@@ -133,6 +187,11 @@ public class Board {
     }
 
     // returns deep copy of grid
+    /**
+     * Returns a deep copy of the board grid.
+     *
+     * @return copied grid array
+     */
     public synchronized int[][] getGridCopy() {
         int[][] copy = new int[size][size];
         for (int i = 0; i < size; i++) System.arraycopy(grid[i], 0, copy[i], 0, size);
@@ -140,12 +199,24 @@ public class Board {
     }
 
     // restore from copy
+    /**
+     * Restores the board state from a given grid copy.
+     *
+     * @param src source grid
+     */
     public synchronized void setGridFromCopy(int[][] src) {
         if (src == null || src.length != size) return;
         for (int i = 0; i < size; i++) System.arraycopy(src[i], 0, grid[i], 0, size);
     }
 
     // static compare
+    /**
+     * Compares two board grids for equality.
+     *
+     * @param a first grid
+     * @param b second grid
+     * @return true if grids are equal
+     */
     public static boolean gridsEqual(int[][] a, int[][] b) {
         if (a == null || b == null) return false;
         if (a.length != b.length) return false;
@@ -157,6 +228,11 @@ public class Board {
         return true;
     }
 
+    /**
+     * Returns a human-readable textual representation of the board.
+     *
+     * @return board as formatted string
+     */
     @Override
     public synchronized String toString() {
         StringBuilder sb = new StringBuilder();

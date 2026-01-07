@@ -1,10 +1,14 @@
 package lab4.server;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.Socket;
+
 import lab4.common.JsonUtil;
 import lab4.common.Move;
-
-import java.io.*;
-import java.net.Socket;
 
 /**
  * Handles a single client connection.
@@ -22,11 +26,22 @@ import java.net.Socket;
  */
 
 public class ClientHandler implements Runnable {
+    /** Socket for communication with this client */
     private final Socket socket;
+    /** Reader for incoming client messages */
     private final BufferedReader in;
+    /** Writer for outgoing messages to client */
     private final PrintWriter out;
+    /** Player ID assigned to this client */
     private final int playerId;
 
+    /**
+     * Creates a ClientHandler for a connected socket.
+     *
+     * @param socket connected client socket
+     * @param playerId assigned player ID (1 or 2)
+     * @throws IOException if socket streams cannot be opened
+     */
     public ClientHandler(Socket socket, int playerId) throws IOException {
         this.socket = socket; // tutaj bierzemy socket (utworzony w ClientConnection) pozyskany przez serverSocket.accept() w ServerMain
         this.playerId = playerId;
@@ -34,12 +49,28 @@ public class ClientHandler implements Runnable {
         this.out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
     }
 
+    /**
+     * Returns the player ID for this client.
+     *
+     * @return player ID
+     */
     public int getPlayerId() { return playerId; }
 
+    /**
+     * Sends a line of text to the client.
+     *
+     * @param line text to send
+     */
     public void sendLine(String line) { // tutaj wysylamy linie do klienta !!!
         try { out.println(line); } catch (Exception e) { System.err.println("Send failed to p" + playerId + ": " + e.getMessage()); }
     }
 
+     /**
+     * Main loop for reading and handling client commands.
+     * <p>
+     * Runs in its own thread. Parses commands and forwards them
+     * to the singleton GameSession instance for processing.
+     */
     @Override
     public void run() {
         try {

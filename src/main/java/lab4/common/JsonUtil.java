@@ -6,10 +6,23 @@ package lab4.common;
  */
 public class JsonUtil {
 
+    /**
+     * Serializes a Move object into a JSON string.
+     *
+     * @param m move to serialize
+     * @return JSON representation of the move
+     */
     public static String moveToJson(Move m) {
         return "{\"row\":" + m.row + ",\"col\":" + m.col + ",\"player\":" + m.player + "}";
     } // \" to tzw. escape sequence, czyli sposób na zapisanie znaku, który normalnie miałby specjalne znaczenie w kodzie
 
+    /**
+     * Deserializes a JSON string into a Move object.
+     *
+     * @param json JSON string representing a move
+     * @return Move object
+     * @throws IllegalArgumentException if the JSON is invalid or fields are missing
+     */
     public static Move jsonToMove(String json) {
         try {
             String s = json.trim().replaceAll("[{}\" ]", "");
@@ -27,6 +40,12 @@ public class JsonUtil {
         }
     }
 
+    /**
+     * Serializes a Board object into a JSON string.
+     *
+     * @param b board to serialize
+     * @return JSON representation of the board
+     */
     public static String boardToJson(Board b) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"size\":").append(b.size).append(",\"grid\":[");
@@ -43,6 +62,13 @@ public class JsonUtil {
         return sb.toString();
     }
 
+     /**
+     * Deserializes a JSON string into a Board object.
+     *
+     * @param json JSON string representing a board
+     * @return Board object
+     * @throws IllegalArgumentException if the JSON is invalid or missing required fields
+     */
     public static Board jsonToBoard(String json) {
         try {
             String s = json.replace("\n", "");

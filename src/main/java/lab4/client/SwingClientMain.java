@@ -42,34 +42,62 @@ import lab4.common.Move;
  */
 public class SwingClientMain {
     // networking / state
+
+    /** Connection to the game server */
     private ClientConnection conn;
+    /** Identifier of this player */
     private int myId = -1;
+    /** Indicates whether it is currently this player's turn */
     private boolean myTurn = false;
+    /** Indicates whether the game is stopped due to an agreement */
     private boolean stoppedForAgreement = false;
+    /** Stores captured stones count for both players */
     private final int[] wyniki = {0, 0};
+    /** Current board state */
     private Board board;
 
     // Swing
+    /** Main application window */
     private JFrame frame;
+    /** Custom panel used to render the board */
     private BoardPanel boardPanel; // nasza klasa
 
+    /** Displays turn information */
     private JLabel turnLabel;
+    /** Displays agreement status */
     private JLabel agreementLabel;
+    /** Displays score information */
     private JLabel scoreLabel;
+    /** Displays player identification */
     private JLabel playerLabel;
 
+    /** Button for passing a turn */
     private JButton passBtn;
+    /** Button for resigning from the game */
     private JButton resignBtn;
+    /** Button for resuming the game after agreement */
     private JButton resumeBtn;
+    /** Button for finishing the agreement phase */
     private JButton finishBtn;
 
+    /** Text console for logging messages */
     private JTextPane console;
+    /** Styled document backing the console */
     private StyledDocument consoleDoc;
 
+    /**
+     * Application entry point.
+     * Ensures that the GUI is created on the Swing event dispatch thread.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new SwingClientMain().start()); // kod wewnątrz niej (stworzenie lambdą SwingClientMain oraz wywołanie start) zostanie wykonany na głównym wątku aplikacji Swing
     }
 
+    /**
+     * Initializes the client connection and builds the GUI.
+     */
     private void start() {
         try {
             conn = new ClientConnection("localhost", 55555);
@@ -83,6 +111,9 @@ public class SwingClientMain {
     }
 
     // GUI
+    /**
+     * Builds and initializes the main GUI layout.
+     */
     private void buildGui() {
         frame = new JFrame("SwingClient"); // nazwa okna aplikacji
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -99,6 +130,11 @@ public class SwingClientMain {
         updateButtons(); // ustawia widoczność przycisków (setEnabled)
     }
 
+     /**
+     * Builds the bottom status panel containing player and game state information.
+     *
+     * @return configured bottom panel
+     */
     private JPanel buildBottomPanel() {
         JPanel bottom = new JPanel(new GridLayout(1, 4)); // 1 wiersz; 4 kolumny
         bottom.setBorder(new EmptyBorder(8, 8, 8, 8)); // margines 8px z każdej strony
@@ -115,6 +151,11 @@ public class SwingClientMain {
         return bottom;
     }
 
+    /**
+     * Builds the right panel containing control buttons and the console.
+     *
+     * @return configured right panel
+     */
     private JPanel buildRightPanel() {
         JPanel right = new JPanel(new BorderLayout()); // layout N E W S / Center
         right.setPreferredSize(new Dimension(300, 600));
@@ -157,12 +198,21 @@ public class SwingClientMain {
     }
 
     // pomocnicza funkcja używana w buildBottomPanel()
+    /**
+     * Helper method for creating centered labels with a uniform style.
+     *
+     * @param txt label text
+     * @return configured JLabel
+     */
     private JLabel label(String txt) {
         JLabel l = new JLabel(txt, SwingConstants.CENTER); // wyśrodkowanie tekstu w poziomie wewnątrz etykiety
         l.setFont(new Font("Arial", Font.BOLD, 14)); // czcionka
         return l;
     }
 
+    /**
+     * Updates button enabled states based on game status.
+     */
     private void updateButtons() {
         passBtn.setEnabled(myTurn && !stoppedForAgreement);
         resignBtn.setEnabled(!stoppedForAgreement);
@@ -171,18 +221,33 @@ public class SwingClientMain {
     }
 
     // console
+     /**
+     * Initializes text styles used in the console.
+     */
     private void initConsoleStyles() {
         addStyle("INFO", Color.LIGHT_GRAY);
         addStyle("ERROR", Color.RED);
         addStyle("SYSTEM", new Color(120, 180, 255));
     }
 
+    /**
+     * Adds a named text style to the console document.
+     *
+     * @param name style name
+     * @param c text color
+     */
     private void addStyle(String name, Color c) {
         Style s = console.addStyle(name, null);
         StyleConstants.setForeground(s, c);
     }
 
     // do wpisywania własnych logów z użyciem wcześniej zadeklarowanych stylów (kolorów)
+    /**
+     * Appends a styled log message to the console with a timestamp.
+     *
+     * @param type message type determining style
+     * @param msg message content
+     */
     private void log(String type, String msg) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -198,6 +263,9 @@ public class SwingClientMain {
     }
 
     // handlers
+    /**
+     * Registers handlers for messages received from the server.
+     */
     private void registerHandlers() {
         conn.startListening(new ClientConnection.MessageHandler() {
             @Override public void onStart(int id) {
@@ -280,9 +348,17 @@ public class SwingClientMain {
     }
 
     // BoardPanel !!!
+    /**
+     * Custom panel responsible for rendering the game board
+     * and handling mouse input.
+     */
     private class BoardPanel extends JPanel {
+        /** Margin from panel edges to the board grid */
         private static final int M = 40; // margines planszy od krawędzi
 
+        /**
+         * Creates the board panel and registers mouse input handling.
+         */
         BoardPanel() {
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) {
@@ -308,6 +384,11 @@ public class SwingClientMain {
             });
         }
 
+        /**
+         * Renders the board grid and stones.
+         *
+         * @param g graphics context
+         */
         @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (board == null) return;
