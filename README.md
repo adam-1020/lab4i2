@@ -36,9 +36,9 @@ Instrukcja uruchomienia:
 
 w src\main\java:
 
-javac .\lab4\client\*.java
+`javac .\lab4\client\*.java`
 
-javac .\lab4\server\*.java
+`javac .\lab4\server\*.java`
 
 nastęnie odpalamy serwer:
 
